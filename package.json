@@ -1,0 +1,34 @@
+{
+  "name": "openroles-engine",
+  "version": "1.0.0",
+  "description": "OpenRoles Ingestion, Enrichment, and API Engine",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "sync": "tsx src/sync.ts",
+    "enrich": "tsx src/enrich.ts",
+    "build:pipeline": "npm run sync && npm run enrich",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@hono/node-server": "^2.1.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.11.3",
+    "hono": "^4.13.1",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/pg": "^8.20.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.8",
+    "typescript": "^7.0.2",
+    "wrangler": "^3.110.0"
+  }
+}

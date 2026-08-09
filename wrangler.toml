@@ -1,0 +1,13 @@
+name = "openroles-engine"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = [ "nodejs_compat" ]
+
+# Scheduled Cron Trigger (Runs every 6 hours in production on Cloudflare)
+[triggers]
+crons = [ "0 */6 * * *" ]
+
+# Environment Variables for Cloudflare Production Runtime
+[vars]
+NODE_ENV = "production"
+CLOUDFLARE_WORKER = "true"
