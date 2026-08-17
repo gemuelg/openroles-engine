@@ -31,6 +31,14 @@ export interface Company {
   active_job_count: number;
 }
 
+export interface CompanyDetail extends Company {
+  jobs?: Job[];
+}
+
+export interface CompanyDetailResponse {
+  data: CompanyDetail;
+}
+
 export interface Pagination {
   total_jobs: number;
   total_pages: number;

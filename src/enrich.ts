@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { db } from './db';
 
 export interface RawJobData {
@@ -203,7 +205,8 @@ export async function runEnrichmentPipeline(): Promise<void> {
 }
 
 // Execute enrichment if run directly as CLI command (`npm run enrich`)
-if (require.main === module) {
+const isMainScript = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMainScript) {
   runEnrichmentPipeline()
     .then(async () => {
       await db.end();

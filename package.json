@@ -4,7 +4,8 @@
   "description": "OpenRoles Ingestion, Enrichment, and API Engine",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "next dev",
+    "engine:dev": "tsx watch src/index.ts",
     "sync": "tsx src/sync.ts",
     "enrich": "tsx src/enrich.ts",
     "build:pipeline": "npm run sync && npm run enrich",
@@ -14,7 +15,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "@hono/node-server": "^2.1.0",
@@ -27,10 +28,14 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.1.2",
     "@types/pg": "^8.20.4",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.8",
     "typescript": "^7.0.2",

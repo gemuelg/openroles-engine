@@ -62,7 +62,7 @@ app.get('/api/jobs', async (c) => {
       paramIndex++;
     }
 
-    // Filter by Workplace Classification (e.g., REMOTE_GLOBAL, REMOTE_US)
+    // Filter by Workplace Classification
     if (workplace && workplace.trim() !== '') {
       conditions.push(`j.workplace_type = $${paramIndex}`);
       values.push(workplace.trim());
@@ -71,7 +71,7 @@ app.get('/api/jobs', async (c) => {
 
     // Filter by Remote Boolean Flag
     if (isRemote === 'true') {
-      conditions.push(`j.is_remote = TRUE`);
+      conditions.push('j.is_remote = TRUE');
     }
 
     // Filter by Minimum Base Salary
@@ -83,10 +83,10 @@ app.get('/api/jobs', async (c) => {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
-    values.push(limit);
-    const limitParamIndex = paramIndex++;
-    values.push(offset);
-    const offsetParamIndex = paramIndex++;
+    // Data Query SQL
+    const dataValues = [...values, limit, offset];
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
 
     const sqlQuery = `
       SELECT 
@@ -107,32 +107,40 @@ app.get('/api/jobs', async (c) => {
         c.name AS company_name,
         c.slug AS company_slug,
         c.category AS company_category,
-        c.logo_url AS company_logo,
-        COUNT(*) OVER() AS total_count
+        c.logo_url AS company_logo
       FROM jobs j
       JOIN companies c ON j.company_id = c.id
       ${whereClause}
-      ORDER BY j.published_at DESC NULLS LAST, j.created_at DESC
+      ORDER BY j.published_at DESC NULLS LAST, j.id DESC
       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex};
     `;
 
-    const result = await db.query(sqlQuery, values);
-    const jobs = result.rows;
+    // Count Query SQL (no ORDER BY required)
+    const countQuery = `
+      SELECT COUNT(*)::int AS total
+      FROM jobs j
+      JOIN companies c ON j.company_id = c.id
+      ${whereClause};
+    `;
 
-    const totalJobs = jobs.length > 0 ? parseInt(jobs[0].total_count, 10) : 0;
+    // Execute queries in parallel
+    const [dataResult, countResult] = await Promise.all([
+      db.query(sqlQuery, dataValues),
+      db.query(countQuery, values),
+    ]);
+
+    const jobs = dataResult.rows;
+    const totalJobs = countResult.rows[0]?.total || 0;
     const totalPages = Math.ceil(totalJobs / limit);
 
-    // Strip window function total_count property from item output
-    const sanitizedJobs = jobs.map(({ total_count, ...job }) => job);
-
     return c.json({
-      data: sanitizedJobs,
+      data: jobs,
       pagination: {
         total_jobs: totalJobs,
         total_pages: totalPages,
         current_page: page,
         per_page: limit,
-        has_next_page: page < totalPages,
+        has_next_page: page <   totalPages,
         has_prev_page: page > 1,
       },
     });
@@ -143,13 +151,13 @@ app.get('/api/jobs', async (c) => {
 });
 
 // ============================================================================
-// 3. GET SINGLE JOB DETAILS (BY SLUG OR ID)
+// 3. GET SINGLE JOB DETAILS (BY SLUG OR UUID)
 // ============================================================================
-// Route: GET /api/jobs/:idOrSlug
 app.get('/api/jobs/:idOrSlug', async (c) => {
   try {
     const idOrSlug = c.req.param('idOrSlug');
-    const isNumericId = /^\d+$/.test(idOrSlug);
+    // Regex matching standard UUID format
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
 
     const query = `
       SELECT 
@@ -161,10 +169,10 @@ app.get('/api/jobs/:idOrSlug', async (c) => {
         c.logo_url AS company_logo
       FROM jobs j
       JOIN companies c ON j.company_id = c.id
-      WHERE ${isNumericId ? 'j.id = $1' : 'j.slug = $1'} AND j.is_active = TRUE;
+      WHERE ${isUuid ? 'j.id = $1::uuid' : 'j.slug = $1'} AND j.is_active = TRUE;
     `;
 
-    const result = await db.query(query, [isNumericId ? parseInt(idOrSlug, 10) : idOrSlug]);
+    const result = await db.query(query, [idOrSlug]);
 
     if (result.rows.length === 0) {
       return c.json({ error: 'Not Found', message: 'Job listing not found.' }, 404);
@@ -176,7 +184,6 @@ app.get('/api/jobs/:idOrSlug', async (c) => {
     return c.json({ error: 'Internal Server Error', message: error.message }, 500);
   }
 });
-
 // ============================================================================
 // 4. GET ALL ACTIVE COMPANIES
 // ============================================================================
@@ -203,6 +210,53 @@ app.get('/api/companies', async (c) => {
     return c.json({ data: result.rows });
   } catch (error: any) {
     console.error('API Error /api/companies:', error);
+    return c.json({ error: 'Internal Server Error', message: error.message }, 500);
+  }
+});
+
+// ============================================================================
+// 4b. GET SINGLE COMPANY DETAILS WITH ACTIVE ROLES
+// ============================================================================
+// Route: GET /api/companies/:idOrSlug
+app.get('/api/companies/:idOrSlug', async (c) => {
+  try {
+    const idOrSlug = c.req.param('idOrSlug');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+
+    const companyQuery = `
+      SELECT id, name, slug, category, website_url, logo_url
+      FROM companies
+      WHERE ${isUuid ? 'id = $1::uuid' : 'slug = $1'} AND is_active = TRUE;
+    `;
+
+    const companyResult = await db.query(companyQuery, [idOrSlug]);
+
+    if (companyResult.rows.length === 0) {
+      return c.json({ error: 'Not Found', message: 'Company not found.' }, 404);
+    }
+
+    const company = companyResult.rows[0];
+
+    const jobsQuery = `
+      SELECT 
+        id, title, slug, location_raw, is_remote, 
+        normalized_department, workplace_type, min_salary, 
+        max_salary, currency, published_at
+      FROM jobs
+      WHERE company_id = $1 AND is_active = TRUE
+      ORDER BY published_at DESC NULLS LAST;
+    `;
+
+    const jobsResult = await db.query(jobsQuery, [company.id]);
+
+    return c.json({
+      data: {
+        ...company,
+        jobs: jobsResult.rows,
+      },
+    });
+  } catch (error: any) {
+    console.error('API Error /api/companies/:idOrSlug:', error);
     return c.json({ error: 'Internal Server Error', message: error.message }, 500);
   }
 });

@@ -2,82 +2,98 @@ import {
   JobsResponse,
   JobDetailResponse,
   CompaniesResponse,
+  CompanyDetailResponse,
   StatsResponse,
   JobQueryParams,
-} from '../types/api';
+} from '@/types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 /**
- * Helper to turn query parameter object into URLSearchParams string
+ * Helper to safely construct query strings without dropping valid 0 or boolean values
  */
 function buildQueryString(params: JobQueryParams): string {
   const searchParams = new URLSearchParams();
 
-  if (params.search) searchParams.set('search', params.search);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.department) searchParams.set('department', params.department);
-  if (params.workplace) searchParams.set('workplace', params.workplace);
-  if (params.is_remote) searchParams.set('is_remote', 'true');
-  if (params.min_salary) searchParams.set('min_salary', params.min_salary.toString());
-  if (params.page) searchParams.set('page', params.page.toString());
-  if (params.limit) searchParams.set('limit', params.limit.toString());
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  });
 
   const queryString = searchParams.toString();
   return queryString ? `?${queryString}` : '';
 }
 
 /**
- * Fetch paginated and filtered job listings
+ * Generic API client with Next.js cache controls and error propagation
  */
-export async function getJobs(params: JobQueryParams = {}): Promise<JobsResponse> {
-  const url = `${API_BASE_URL}/jobs${buildQueryString(params)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const defaultOptions: RequestInit = {
+    next: { revalidate: 60 },
+  };
+
+  const res = await fetch(url, { ...defaultOptions, ...options });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch jobs: ${res.statusText}`);
+    throw new ApiError(`API Error [${res.status}]: ${res.statusText}`, res.status);
   }
 
   return res.json();
+}
+
+/**
+ * Fetch paginated and filtered job listings
+ */
+export async function getJobs(
+  params: JobQueryParams = {},
+  options?: RequestInit
+): Promise<JobsResponse> {
+  return fetchAPI<JobsResponse>(`/jobs${buildQueryString(params)}`, options);
 }
 
 /**
  * Fetch single job details by slug or numerical ID
  */
-export async function getJobBySlug(idOrSlug: string): Promise<JobDetailResponse> {
-  const res = await fetch(`${API_BASE_URL}/jobs/${idOrSlug}`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch job detail for: ${idOrSlug}`);
-  }
-
-  return res.json();
+export async function getJobBySlug(
+  idOrSlug: string,
+  options?: RequestInit
+): Promise<JobDetailResponse> {
+  return fetchAPI<JobDetailResponse>(`/jobs/${idOrSlug}`, options);
 }
 
 /**
  * Fetch active tracked companies
  */
-export async function getCompanies(): Promise<CompaniesResponse> {
-  const res = await fetch(`${API_BASE_URL}/companies`, { cache: 'no-store' });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch companies: ${res.statusText}`);
-  }
-
-  return res.json();
+export async function getCompanies(options?: RequestInit): Promise<CompaniesResponse> {
+  return fetchAPI<CompaniesResponse>('/companies', options);
 }
 
 /**
  * Fetch engine statistics
  */
-export async function getStats(): Promise<StatsResponse> {
-  const res = await fetch(`${API_BASE_URL}/stats`, { cache: 'no-store' });
+export async function getStats(options?: RequestInit): Promise<StatsResponse> {
+  return fetchAPI<StatsResponse>('/stats', options);
+}
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch stats: ${res.statusText}`);
-  }
-
-  return res.json();
+/**
+ * Fetch single company details with its active jobs by slug or UUID
+ */
+export async function getCompanyBySlug(
+  idOrSlug: string,
+  options?: RequestInit
+): Promise<CompanyDetailResponse> {
+  return fetchAPI<CompanyDetailResponse>(`/companies/${idOrSlug}`, options);
 }

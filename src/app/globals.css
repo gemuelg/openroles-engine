@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@layer base {
+  /* System-wide smooth rendering & box sizing resets */
+  :root {
+    --font-inter:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-inter);
+    background-color: #f8fafc; /* slate-50 */
+    color: #0f172a; /* slate-900 */
+    overflow-x: hidden;
+  }
+
+  /* Custom text selection styling matching brand theme */
+  ::selection {
+    background-color: #dbeafe; /* blue-100 */
+    color: #1e40af; /* blue-800 */
+  }
+}
+
+/* Custom Utilities for Engine Detail Pages & ATS Ingested Content */
+@utility no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Styles for raw HTML descriptions injected from ATS feeds (job details) */
+.job-description-content {
+  color: #334155; /* slate-700 */
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.job-description-content h1,
+.job-description-content h2,
+.job-description-content h3,
+.job-description-content h4 {
+  color: #0f172a; /* slate-900 */
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 1.75em;
+  margin-bottom: 0.75em;
+}
+
+.job-description-content h1 {
+  font-size: 1.5rem;
+}
+.job-description-content h2 {
+  font-size: 1.25rem;
+}
+.job-description-content h3 {
+  font-size: 1.1rem;
+}
+
+.job-description-content p {
+  margin-bottom: 1.25em;
+}
+
+.job-description-content ul,
+.job-description-content ol {
+  margin-top: 0.5em;
+  margin-bottom: 1.25em;
+  padding-left: 1.5em;
+}
+
+.job-description-content ul {
+  list-style-type: disc;
+}
+
+.job-description-content ol {
+  list-style-type: decimal;
+}
+
+.job-description-content li {
+  margin-bottom: 0.375em;
+}
+
+.job-description-content a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+
+.job-description-content a:hover {
+  color: #1d4ed8; /* blue-700 */
+}
+
+.job-description-content strong {
+  color: #0f172a; /* slate-900 */
+  font-weight: 600;
+}
+
+.job-description-content blockquote {
+  border-left: 3px solid #cbd5e1; /* slate-300 */
+  padding-left: 1rem;
+  font-style: italic;
+  color: #64748b; /* slate-500 */
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.job-description-content code {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #0f172a;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

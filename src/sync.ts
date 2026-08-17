@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { db } from './db';
 import { GreenhouseImporter, NormalizedJob } from './importers/greenhouse';
 import { LeverImporter } from './importers/lever';
@@ -136,7 +138,8 @@ export async function runIngestionPipeline(): Promise<void> {
 }
 
 // Execute directly if run as CLI script via `npm run sync`
-if (require.main === module) {
+const isMainScript = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMainScript) {
   runIngestionPipeline()
     .then(async () => {
       await db.end();
